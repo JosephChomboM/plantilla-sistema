@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="es" data-bs-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dataset Externo | TechSolutions Inc.</title>
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Bootstrap Icons -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- PapaParse para leer CSV fácilmente -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+    
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bs-body-bg);
+            transition: background-color 0.3s, color 0.3s;
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+        }
+        .navbar-brand { font-weight: 700; letter-spacing: 0.5px; }
+        .hero-section {
+            background: linear-gradient(135deg, #198754 0%, #0f5132 100%);
+            color: white;
+            padding: 2.5rem 0;
+            margin-bottom: 2rem;
+            border-radius: 0 0 1rem 1rem;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
+        .table-container {
+            background: var(--bs-body-bg);
+            padding: 1.5rem;
+            border-radius: 0.75rem;
+            box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+            /* Importante para no desbordar con muchas columnas */
+            overflow-x: auto; 
+            max-width: 100vw;
+        }
+        .table th { font-weight: 600; white-space: nowrap; font-size: 0.85rem; }
+        .table td { white-space: nowrap; font-size: 0.85rem; }
+        footer { margin-top: auto; padding: 1.5rem 0; }
+        
+        [data-bs-theme="dark"] .hero-section { background: linear-gradient(135deg, #157347 0%, #0a3622 100%); }
+        [data-bs-theme="dark"] .table-container { background: #212529; border: 1px solid #373b3e; }
+        [data-bs-theme="dark"] .table { color: #e9ecef; }
+    </style>
+</head>
+<body>
+
+    <!-- Header / Navbar -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark sticky-top shadow-sm">
+        <div class="container-fluid px-4">
+            <a class="navbar-brand d-flex align-items-center gap-2" href="index.html">
+                <i class="bi bi-hexagon-fill text-success fs-3"></i>
+                TechSolutions
+            </a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav me-auto mb-2 mb-lg-0 ms-4">
+                    <li class="nav-item">
+                        <a class="nav-link" href="index.html"><i class="bi bi-speedometer2 me-1"></i> Dashboard</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link active" aria-current="page" href="datos.html"><i class="bi bi-file-earmark-spreadsheet me-1"></i> Egresos CSV</a>
+                    </li>
+                </ul>
+                <ul class="navbar-nav align-items-center gap-3">
+                    <li class="nav-item">
+                        <button class="btn btn-link nav-link px-0" id="theme-toggle" title="Cambiar tema">
+                            <i class="bi bi-moon-stars-fill fs-5"></i>
+                        </button>
+                    </li>
+                    <li class="nav-item ms-lg-2">
+                        <div class="d-flex align-items-center text-white text-decoration-none">
+                            <img src="https://ui-avatars.com/api/?name=Admin&background=0D8ABC&color=fff" alt="User" class="rounded-circle me-2" style="width: 35px; height: 35px;">
+                            <span class="small fw-semibold">Administrador</span>
+                        </div>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Hero Section -->
+    <div class="hero-section">
+        <div class="container-fluid px-4 text-center text-lg-start d-flex flex-column flex-lg-row align-items-center justify-content-between">
+            <div>
+                <h1 class="display-6 fw-bold mb-1"><i class="bi bi-database-down"></i> Egresos Hospitalarios</h1>
+                <p class="mb-0 opacity-75">Lectura en tiempo real del dataset remoto (Mostrando primeros 20 registros).</p>
+            </div>
+            <div class="mt-3 mt-lg-0">
+                <a href="https://github.com/JosephChomboM/dataset-sem2-DIAE/blob/main/Listado_egresos_hospitalarios_ene2022_nov2025.csv" target="_blank" class="btn btn-light rounded-pill shadow-sm fw-semibold text-success px-4 py-2">
+                    <i class="bi bi-github me-2"></i> Ver en GitHub
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="container-fluid px-4 mb-5">
+        
+        <!-- Contenedor del Spinner de Carga -->
+        <div class="table-container text-center py-5" id="loading-container">
+            <div class="spinner-border text-success" role="status" style="width: 3rem; height: 3rem;">
+                <span class="visually-hidden">Cargando...</span>
+            </div>
+            <h5 class="mt-3 text-muted">Descargando y procesando archivo CSV...</h5>
+        </div>
+
+        <!-- Tabla Principal -->
+        <div class="table-container" id="data-container" style="display: none;">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h5 class="mb-0 text-success fw-bold"><i class="bi bi-table me-2"></i> Vista Previa de Datos</h5>
+                <span class="badge bg-secondary rounded-pill" id="row-count">0 Filas</span>
+            </div>
+            
+            <div class="table-responsive border rounded">
+                <table class="table table-hover table-striped mb-0 align-middle">
+                    <thead class="table-dark" id="csv-thead">
+                        <!-- Las cabeceras se generarán aquí -->
+                    </thead>
+                    <tbody id="csv-tbody">
+                        <!-- Las filas se generarán aquí -->
+                    </tbody>
+                </table>
+            </div>
+            <div class="text-end mt-2 text-muted small">
+                Origen: GitHub Raw Data | Formato: CSV
+            </div>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="bg-dark text-white text-center mt-auto shadow-lg">
+        <div class="container">
+            <p class="mb-1 opacity-75">&copy; 2026 TechSolutions Inc. - Integración de Datos</p>
+        </div>
+    </footer>
+
+    <!-- Bootstrap JS Bundle -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <script>
+        // Tema Oscuro / Claro
+        document.addEventListener("DOMContentLoaded", () => {
+            const themeBtn = document.getElementById('theme-toggle');
+            const currentTheme = localStorage.getItem('theme') || 'light';
+            document.documentElement.setAttribute('data-bs-theme', currentTheme);
+            updateThemeIcon(themeBtn, currentTheme);
+
+            themeBtn.addEventListener('click', () => {
+                let isDark = document.documentElement.getAttribute('data-bs-theme') === 'dark';
+                let newTheme = isDark ? 'light' : 'dark';
+                document.documentElement.setAttribute('data-bs-theme', newTheme);
+                localStorage.setItem('theme', newTheme);
+                updateThemeIcon(themeBtn, newTheme);
+            });
+            
+            // Iniciar carga del CSV
+            loadCSV();
+        });
+
+        function updateThemeIcon(btn, theme) {
+            btn.innerHTML = theme === 'dark' ? '<i class="bi bi-sun-fill fs-5 text-warning"></i>' : '<i class="bi bi-moon-stars-fill fs-5"></i>';
+        }
+
+        // Lógica para cargar y emebeber el CSV
+        function loadCSV() {
+            const csvUrl = "https://raw.githubusercontent.com/JosephChomboM/dataset-sem2-DIAE/main/Listado_egresos_hospitalarios_ene2022_nov2025.csv";
+            
+            Papa.parse(csvUrl, {
+                download: true,       // Descarga el archivo de la URL
+                header: true,         // Asume que la primera fila son las cabeceras
+                preview: 20,          // Limita el parseo a exactamente 20 filas
+                skipEmptyLines: true, // Ignora filas en blanco
+                complete: function(results) {
+                    renderTable(results.data, results.meta.fields);
+                },
+                error: function(error) {
+                    document.getElementById("loading-container").innerHTML = `
+                        <div class="alert alert-danger d-inline-block">
+                            <i class="bi bi-exclamation-triangle-fill me-2"></i> Error al cargar CSV: ${error.message}
+                        </div>`;
+                }
+            });
+        }
+
+        function renderTable(data, headers) {
+            const thead = document.getElementById("csv-thead");
+            const tbody = document.getElementById("csv-tbody");
+            
+            // Limpiar contenido
+            thead.innerHTML = "";
+            tbody.innerHTML = "";
+
+            // Renderizar Cabeceras
+            let trHeader = document.createElement("tr");
+            if (headers) {
+                headers.forEach(header => {
+                    let th = document.createElement("th");
+                    th.textContent = header;
+                    trHeader.appendChild(th);
+                });
+            }
+            thead.appendChild(trHeader);
+
+            // Renderizar Filas de datos
+            data.forEach(row => {
+                let tr = document.createElement("tr");
+                if (headers) {
+                    headers.forEach(header => {
+                        let td = document.createElement("td");
+                        // Rellenar con la data o "N/A" si está vacío
+                        td.textContent = row[header] !== undefined && row[header] !== "" ? row[header] : "-";
+                        tr.appendChild(td);
+                    });
+                }
+                tbody.appendChild(tr);
+            });
+
+            // Actualizar interfaz
+            document.getElementById("row-count").innerHTML = `<i class="bi bi-list-ol"></i> ${data.length} Filas Mostradas`;
+            document.getElementById("loading-container").style.display = "none";
+            document.getElementById("data-container").style.display = "block";
+        }
+    </script>
+</body>
+</html>
